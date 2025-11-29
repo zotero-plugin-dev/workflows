@@ -32,7 +32,7 @@ runs:
         fetch-depth: "${{ inputs.fetch-all == 'true' && '0' || '1' }}"
 
     - name: Install pnpm
-      if: ${{ inputs.package-manager == "pnpm" }}
+      if: ${{ inputs.package-manager == 'pnpm' }}
       uses: pnpm/action-setup@4
 
     - name: Setup node
