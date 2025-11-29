@@ -1,0 +1,4 @@
+{
+  extends: ['github>zotero-plugin-dev/renovate-config'],
+  ignorePaths: [],
+}
