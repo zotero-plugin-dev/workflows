@@ -26,17 +26,17 @@ runs:
   using: composite
   steps:
     - name: Checkout
-      uses: actions/checkout@5
+      uses: actions/checkout@v5
       with:
         persist-credentials: ${{ inputs.persist-credentials }}
         fetch-depth: "${{ inputs.fetch-all == 'true' && '0' || '1' }}"
 
     - name: Install pnpm
       if: ${{ inputs.package-manager == 'pnpm' }}
-      uses: pnpm/action-setup@4
+      uses: pnpm/action-setup@v4
 
     - name: Setup node
-      uses: actions/setup-node@6
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
         cache: ${{ inputs.package-manager }}
