@@ -162,9 +162,6 @@ jobs:
     name: Handle Stale Issues
     runs-on: ubuntu-latest
     if: ${{ inputs.enable-stale && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
-    permissions:
-      issues: write
-      pull-requests: write
     steps:
       - name: Close stale issues
         uses: actions/stale@v10
@@ -183,9 +180,6 @@ jobs:
     name: Lock Old Threads
     runs-on: ubuntu-latest
     if: ${{ inputs.enable-lock && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
-    permissions:
-      issues: write
-      pull-requests: write
     steps:
       - name: Lock closed threads
         uses: dessant/lock-threads@v5
