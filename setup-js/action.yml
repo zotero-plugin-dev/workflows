@@ -30,6 +30,7 @@ runs:
       with:
         persist-credentials: ${{ inputs.persist-credentials }}
         fetch-depth: "${{ inputs.fetch-all == 'true' && '0' || '1' }}"
+        submodules: "${{ inputs.fetch-all == 'true' && 'recursive' || false }}"
 
     - name: Install pnpm
       if: ${{ inputs.package-manager == 'pnpm' }}
