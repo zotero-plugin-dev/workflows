@@ -1,0 +1,30 @@
+# --------------------------------------------------------------------------
+# autofix.ci Workflow
+#
+# Automatically fixes linting and formatting issues in pull requests by calling
+# a shared workflow.
+#
+# Requirements:
+# 1. This workflow name must be `autofix.ci`.
+# 2. The autofix.ci GitHub App must be installed on this repository.
+#    Installation link: https://github.com/marketplace/autofix-ci
+# --------------------------------------------------------------------------
+
+name: autofix.ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  autofix:
+    uses: zotero-plugin-dev/workflows/.github/workflows/autofix.yml@main
+    permissions:
+      contents: read
+
+    # Optional: To override the default command defined in the reusable workflow,
+    # uncomment the 'with' block below and specify your custom command.
+    # with:
+    #   command: 'pnpm lint:fix'
