@@ -1,0 +1,196 @@
+name: Reusable Issue Management Bot
+
+on:
+  workflow_call:
+    inputs:
+      # --- Feedback Handler ---
+      enable-feedback:
+        description: "Enable the feedback label handler (add/remove feedback-label)."
+        type: boolean
+        required: false
+        default: true
+      feedback-label:
+        description: "Label to add when a maintainer comments, and remove when a user comments."
+        type: string
+        required: false
+        default: "await-user-feedback"
+
+      # --- Auto-close on "Invalid" Label ---
+      enable-invalid:
+        description: 'Enable closing issues automatically when the "invalid" label is added.'
+        type: boolean
+        required: false
+        default: true
+      invalid-label-name:
+        description: 'When this label is added, close the issue with a comment. (e.g., "invalid", "wontfix")'
+        type: string
+        required: false
+        default: "invalid"
+      invalid-label-comment:
+        description: "The comment to post when closing an issue based on the label."
+        type: string
+        required: false
+        default: "Hello @${{ github.event.issue.user.login }}. This issue is marked as `invalid` and closed. Please make sure you are reporting an issue and following the issue template."
+
+      # --- Duplicate Marker ---
+      enable-duplicate:
+        description: "Enable the feature to mark issues as duplicates."
+        type: boolean
+        required: false
+        default: true
+      duplicate-label:
+        description: "Label to add to an issue when it is marked as a duplicate."
+        type: string
+        required: false
+        default: "duplicate"
+      close-duplicates:
+        description: "Whether to close the issue when it is marked as a duplicate."
+        type: boolean
+        required: false
+        default: true
+
+      # --- Stale Issue Management ---
+      enable-stale:
+        description: "Enable the job to check for and close stale issues."
+        type: boolean
+        required: false
+        default: true
+      stale-check-only-labels:
+        description: "Only check issues with these labels for staleness. Comma-separated."
+        type: string
+        required: false
+        default: "await-user-feedback"
+      days-before-issue-stale:
+        description: "Number of days of inactivity before an issue is marked as stale."
+        type: number
+        required: false
+        default: 30
+      days-before-issue-close:
+        description: "Number of days of inactivity after being marked stale before an issue is closed."
+        type: number
+        required: false
+        default: 7
+      stale-issue-label:
+        description: "The label to apply to stale issues."
+        type: string
+        required: false
+        default: "stale"
+      stale-issue-message:
+        description: "The comment to post when an issue is marked as stale."
+        type: string
+        required: false
+        default: "This issue is stale because it has been open for 30 days with no activity."
+      close-issue-message:
+        description: "The comment to post when a stale issue is closed."
+        type: string
+        required: false
+        default: "This issue was closed because it has been inactive for 7 days since being marked as stale."
+
+      # --- Lock Old Threads ---
+      enable-lock:
+        description: "Enable the job to lock old, inactive threads."
+        type: boolean
+        required: false
+        default: true
+      issue-inactive-days-before-lock:
+        description: "Number of days of inactivity before a closed issue is locked."
+        type: number
+        required: false
+        default: 30
+      exclude-lock-issue-labels:
+        description: "Do not lock issues with these labels. Comma-separated."
+        type: string
+        required: false
+        default: "keep-open"
+
+    # secrets:
+    #   github-token:
+    #     description: "GITHUB_TOKEN for API requests."
+    #     required: true
+
+permissions:
+  issues: write
+  pull-requests: write
+  # discussions: write
+
+jobs:
+  feedback:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.enable-feedback && github.event_name == 'issue_comment' }}
+    steps:
+      - name: Add "feedback" label
+        if: ${{ contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) }}
+        uses: actions-cool/issues-helper@v3
+        with:
+          actions: add-labels
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          labels: ${{ inputs.feedback-label }}
+      - name: Remove "feedback" label
+        if: ${{ !contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) }}
+        uses: actions-cool/issues-helper@v3
+        with:
+          actions: remove-labels
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          labels: ${{ inputs.feedback-label }}
+
+  invalid:
+    name: Close issue on "invalid" label
+    if: ${{ inputs.enable-invalid && github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == inputs.invalid-label-name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-cool/issues-helper@v3
+        with:
+          actions: close-issue, create-comment
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: ${{ inputs.invalid-label-comment }}
+
+  duplicate:
+    name: Mark issue as duplicate
+    if: ${{ inputs.enable-duplicate && github.event_name == 'issue_comment' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-cool/issues-helper@v3
+        with:
+          actions: mark-duplicate
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: ${{ inputs.duplicate-label }}
+          close-issue: ${{ inputs.close-duplicates }}
+
+  stale:
+    name: Handle Stale Issues
+    runs-on: ubuntu-latest
+    if: ${{ inputs.enable-stale && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Close stale issues
+        uses: actions/stale@v10
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          only-labels: ${{ inputs.stale-check-only-labels }}
+          days-before-issue-stale: ${{ inputs.days-before-issue-stale }}
+          days-before-issue-close: ${{ inputs.days-before-issue-close }}
+          stale-issue-label: ${{ inputs.stale-issue-label }}
+          stale-issue-message: ${{ inputs.stale-issue-message }}
+          close-issue-message: ${{ inputs.close-issue-message }}
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+
+  lock:
+    name: Lock Old Threads
+    runs-on: ubuntu-latest
+    if: ${{ inputs.enable-lock && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Lock closed threads
+        uses: dessant/lock-threads@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-inactive-days: ${{ inputs.issue-inactive-days-before-lock }}
+          exclude-any-issue-labels: ${{ inputs.exclude-lock-issue-labels }}
+          pr-inactive-days: 30
