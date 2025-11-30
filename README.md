@@ -47,6 +47,8 @@ jobs:
 
 See the [examples directory](./examples/) for more examples.
 
+You can also choose to fix the version as a commit hash to prevent supply chain attacks and improve compatibility.
+
 ## Lincense
 
 MIT License © 2025-PRESENT Northword
