@@ -16,7 +16,7 @@ on:
       release:
         description: "The command to execute the release (e.g., publishing to GitHub Releases)."
         type: string
-        required: true
+        required: false
         default: "pnpm release"
       comment-template:
         description: "Template for the comment posted on related Issues/PRs after release."
