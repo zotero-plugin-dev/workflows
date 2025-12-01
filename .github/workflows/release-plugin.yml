@@ -26,7 +26,7 @@ on:
           :rocket: _This ticket has been resolved in {release_tag}. See {release_link} for release notes._
 
     secrets:
-      GITHUB_TOKEN:
+      GH_TOKEN:
         description: "A GITHUB_TOKEN with write permissions for contents, issues, and pull-requests."
         required: false
 
@@ -45,19 +45,20 @@ jobs:
           fetch-all: ${{ inputs.fetch-all }}
 
       - name: Build
-        if: inputs.build != ''
+        if: ${{ inputs.build }}
         run: ${{ inputs.build }}
 
       - name: Release to GitHub
         run: ${{ inputs.release }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
       - run: sleep 1s
 
       - name: Notify release
         uses: apexskier/github-release-commenter@v1
+        if: ${{ inputs.comment-template }}
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           comment-template: ${{ inputs.comment-template }}

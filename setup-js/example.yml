@@ -1,0 +1,14 @@
+name: Example of Setup JavsScript
+
+on:
+  push:
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
+
+      - name: Run your command
+        run: echo "pass"
