@@ -1,0 +1,52 @@
+name: Reusable Release NPM Package Workflow
+
+on:
+  workflow_call:
+    inputs:
+      build:
+        required: false
+        type: string
+        default: ""
+      cr:
+        description: Enable Continuous Releases, powered by pkg-pr-new
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
+        with:
+          fetch-all: true
+
+      - name: Build
+        if: ${{ inputs.build }}
+        run: ${{ inputs.build }}
+
+      # ========================================
+      #  Production release (Tag-triggered)
+      #  Runs only when pushing a version tag
+      # ========================================
+      - name: Publish to NPM and sync Changelog
+        if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          pnpm publish --no-git-checks --access public
+          pnpx changelogithub
+        env:
+          NPM_CONFIG_PROVENANCE: true
+
+      # ========================================
+      #  Preview release (Push / PR-triggered)
+      # ========================================
+      - name: Publish Preview Package (pkg-pr-new)
+        if: ${{ inputs.cr == true && github.ref_type != 'tag' }}
+        run: pnpx pkg-pr-new publish --compact --no-template --pnpm

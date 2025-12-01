@@ -1,0 +1,63 @@
+name: Reusable Release Zotero Plugin Workflow
+
+on:
+  workflow_call:
+    inputs:
+      fetch-all:
+        description: "Whether to fetch all commits and submodules."
+        type: boolean
+        required: false
+        default: false
+      build:
+        description: "The command to build the project. Set to an empty string to skip."
+        type: string
+        required: false
+        default: ""
+      release:
+        description: "The command to execute the release (e.g., publishing to GitHub Releases)."
+        type: string
+        required: true
+        default: "pnpm release"
+      comment-template:
+        description: "Template for the comment posted on related Issues/PRs after release."
+        type: string
+        required: false
+        default: |
+          :rocket: _This ticket has been resolved in {release_tag}. See {release_link} for release notes._
+
+    secrets:
+      GITHUB_TOKEN:
+        description: "A GITHUB_TOKEN with write permissions for contents, issues, and pull-requests."
+        required: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
+        with:
+          fetch-all: ${{ inputs.fetch-all }}
+
+      - name: Build
+        if: inputs.build != ''
+        run: ${{ inputs.build }}
+
+      - name: Release to GitHub
+        run: ${{ inputs.release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: sleep 1s
+
+      - name: Notify release
+        uses: apexskier/github-release-commenter@v1
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          comment-template: ${{ inputs.comment-template }}
