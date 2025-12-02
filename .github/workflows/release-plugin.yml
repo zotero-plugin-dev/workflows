@@ -3,11 +3,6 @@ name: Reusable Release Zotero Plugin Workflow
 on:
   workflow_call:
     inputs:
-      fetch-all:
-        description: "Whether to fetch all commits and submodules."
-        type: boolean
-        required: false
-        default: false
       build:
         description: "The command to build the project. Set to an empty string to skip."
         type: string
@@ -42,7 +37,7 @@ jobs:
       - name: Setup JS
         uses: zotero-plugin-dev/workflows/setup-js@main
         with:
-          fetch-all: ${{ inputs.fetch-all }}
+          fetch-all: true
 
       - name: Build
         if: ${{ inputs.build }}
