@@ -4,7 +4,7 @@ description: Setup JavaScript environment
 inputs:
   persist-credentials:
     description: Whether to configure the token or SSH key with the local git config
-    default: false
+    default: true
 
   ref:
     description: The `ref` option of actions/checkout
