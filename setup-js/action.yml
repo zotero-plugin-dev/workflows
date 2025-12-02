@@ -6,6 +6,10 @@ inputs:
     description: Whether to configure the token or SSH key with the local git config
     default: false
 
+  ref:
+    description: The `ref` option of actions/checkout
+    default: ""
+
   fetch-all:
     description: Whether to fetch all commits and submodules.
     default: false
@@ -29,6 +33,7 @@ runs:
       uses: actions/checkout@v6
       with:
         persist-credentials: ${{ inputs.persist-credentials }}
+        ref: ${{ inputs.ref }}
         fetch-depth: "${{ inputs.fetch-all == 'true' && '0' || '1' }}"
         submodules: "${{ inputs.fetch-all == 'true' && 'recursive' || false }}"
 
