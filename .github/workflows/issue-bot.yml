@@ -188,3 +188,4 @@ jobs:
           issue-inactive-days: ${{ inputs.issue-inactive-days-before-lock }}
           exclude-any-issue-labels: ${{ inputs.exclude-lock-issue-labels }}
           pr-inactive-days: 30
+          process-only: "issues, prs"
