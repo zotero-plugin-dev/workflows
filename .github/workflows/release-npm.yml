@@ -43,6 +43,7 @@ jobs:
           pnpx changelogithub
         env:
           NPM_CONFIG_PROVENANCE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ========================================
       #  Preview release (Push / PR-triggered)
