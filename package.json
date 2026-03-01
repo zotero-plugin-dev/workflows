@@ -1,7 +1,7 @@
 {
   "name": "@zotero-plugin-dev/workflows",
   "private": true,
-  "packageManager": "pnpm@10.28.2",
+  "packageManager": "pnpm@10.30.3",
   "type": "module",
   "license": "MIT",
   "scripts": {
