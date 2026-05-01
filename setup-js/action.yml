@@ -59,7 +59,7 @@ runs:
 
     - name: Install pnpm
       if: ${{ steps.detect.outputs.pm == 'pnpm' }}
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@v6
 
     - name: Setup node
       uses: actions/setup-node@v6
