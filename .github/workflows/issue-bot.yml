@@ -120,7 +120,7 @@ jobs:
     steps:
       - name: Add "feedback" label
         if: ${{ contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) }}
-        uses: actions-cool/issues-helper@v3
+        uses: actions-cool/issues-helper-backup@d65454423c6fbbd20026b9b499d403f79422ac69 # v3
         with:
           actions: add-labels
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -128,7 +128,7 @@ jobs:
           labels: ${{ inputs.feedback-label }}
       - name: Remove "feedback" label
         if: ${{ !contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) }}
-        uses: actions-cool/issues-helper@v3
+        uses: actions-cool/issues-helper-backup@d65454423c6fbbd20026b9b499d403f79422ac69 # v3
         with:
           actions: remove-labels
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -140,7 +140,7 @@ jobs:
     if: ${{ inputs.enable-invalid && github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == inputs.invalid-label-name }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions-cool/issues-helper@v3
+      - uses: actions-cool/issues-helper-backup@d65454423c6fbbd20026b9b499d403f79422ac69 # v3
         with:
           actions: close-issue, create-comment
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -151,7 +151,7 @@ jobs:
     if: ${{ inputs.enable-duplicate && github.event_name == 'issue_comment' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions-cool/issues-helper@v3
+      - uses: actions-cool/issues-helper-backup@d65454423c6fbbd20026b9b499d403f79422ac69 # v3
         with:
           actions: mark-duplicate
           token: ${{ secrets.GITHUB_TOKEN }}
