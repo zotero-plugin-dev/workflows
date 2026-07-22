@@ -52,6 +52,12 @@ if (!isCI) {
     process.exit(1);
   }
   run("git pull origin main");
+
+  const ahead = run("git rev-list --count origin/main..HEAD");
+  if (ahead !== "0") {
+    console.log(`Pushing ${ahead} local commit(s) to main ...`);
+    run("git push origin main");
+  }
 }
 
 // --- Preview ---
@@ -96,6 +102,9 @@ try {
 } catch {
   run(`git tag -a ${majorTag} -m "${majorTag}"`);
 }
+
+console.log("Pushing commits ...");
+run("git push origin main");
 
 console.log("Pushing tags ...");
 run(`git push origin ${tag}`);
