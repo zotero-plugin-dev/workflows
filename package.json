@@ -6,7 +6,10 @@
   "license": "MIT",
   "scripts": {
     "lint": "prettier . --write",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major"
   },
   "devDependencies": {
     "prettier": "^3.9.4"

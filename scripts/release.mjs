@@ -5,17 +5,16 @@
  * and creates a GitHub Release.
  *
  * Usage:
- *   pnpm run release              → auto bump patch
- *   pnpm run release patch        → bump patch
- *   pnpm run release minor        → bump minor
- *   pnpm run release major        → bump major
- *   pnpm run release 1.2.3        → explicit version
+ *   pnpm run release              → 默认 bump patch
+ *   pnpm run release patch
+ *   pnpm run release minor
+ *   pnpm run release major
  *   node scripts/release.mjs patch --ci
  */
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline";
 
-const arg = process.argv[2];
+const level = process.argv[2] || "patch";
 const isCI = process.argv.includes("--ci");
 
 function run(cmd) {
@@ -30,76 +29,48 @@ function runQuiet(cmd) {
   }
 }
 
-// --- Resolve version ---
-
-const latestTag = runQuiet(
-  'git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null',
-);
-
-function parseVersion(v) {
-  const match = v.replace(/^v/, "").match(/^(\d+)\.(\d+)\.(\d+)$/);
-  if (!match) return null;
-  return {
-    major: parseInt(match[1]),
-    minor: parseInt(match[2]),
-    patch: parseInt(match[3]),
-  };
+if (!["major", "minor", "patch"].includes(level)) {
+  console.error("Usage: pnpm run release [major|minor|patch] [--ci]");
+  process.exit(1);
 }
 
-const bumpLevels = ["major", "minor", "patch"];
-const prev = latestTag
-  ? parseVersion(latestTag)
-  : { major: 0, minor: 0, patch: 0 };
+// ---- Resolve version ----
+
+const latestTag = runQuiet('git describe --tags --abbrev=0 --match "v[0-9]*"');
+
+function parseVersion(v) {
+  const [, major, minor, patch] = v.match(/^v?(\d+)\.(\d+)\.(\d+)$/) || [];
+  return { major: +major, minor: +minor, patch: +patch };
+}
+
 let next;
 
-if (bumpLevels.includes(arg)) {
+if (!latestTag) {
+  next = { major: 1, minor: 0, patch: 0 };
+} else {
+  const prev = parseVersion(latestTag);
   next = { ...prev };
-  if (arg === "major") {
+  if (level === "major") {
     next.major++;
     next.minor = 0;
     next.patch = 0;
-  } else if (arg === "minor") {
+  } else if (level === "minor") {
     next.minor++;
     next.patch = 0;
   } else {
     next.patch++;
   }
-} else if (!arg) {
-  next = { ...prev };
-  next.patch++;
-} else if (/^\d+\.\d+\.\d+$/.test(arg)) {
-  next = parseVersion(arg);
-} else if (/^v\d+\.\d+\.\d+$/.test(arg)) {
-  next = parseVersion(arg);
-} else {
-  console.error(`Usage: pnpm run release [patch|minor|major|<version>] [--ci]`);
-  process.exit(1);
-}
-
-if (!next) {
-  console.error(`Invalid version: ${arg}`);
-  process.exit(1);
 }
 
 const tag = `v${next.major}.${next.minor}.${next.patch}`;
 const majorTag = `v${next.major}`;
 
-// --- Checks ---
-
-const status = run("git status --porcelain");
-if (status) {
-  console.error(
-    "Working directory is not clean. Please commit or stash changes first.",
-  );
-  process.exit(1);
-}
+// ---- Checks ----
 
 if (!isCI) {
   const branch = run("git branch --show-current");
   if (branch !== "main") {
-    console.error(
-      `Not on main branch (current: ${branch}). Please switch to main first.`,
-    );
+    console.error(`Not on main branch (current: ${branch}).`);
     process.exit(1);
   }
   run("git pull origin main");
@@ -111,7 +82,7 @@ if (!isCI) {
   }
 }
 
-// --- Preview ---
+// ---- Preview ----
 
 console.log(`\n  Prev  : ${latestTag || "(none)"}`);
 console.log(`  Next  : ${tag}`);
@@ -119,7 +90,7 @@ console.log(`  Major : ${majorTag}`);
 console.log(`  HEAD  : ${run("git rev-parse --short HEAD")}`);
 console.log(`  Last  : ${run("git log -1 --oneline")}`);
 
-// --- Confirm ---
+// ---- Confirm ----
 
 if (!isCI) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -134,16 +105,18 @@ if (!isCI) {
   }
 }
 
-// --- Tag ---
+// ---- Git config (CI) ----
 
 if (isCI) {
-  const name = process.env.GIT_USER_NAME || "github-actions[bot]";
-  const email =
-    process.env.GIT_USER_EMAIL ||
-    "41898282+github-actions[bot]@users.noreply.github.com";
-  run(`git config user.name "${name}"`);
-  run(`git config user.email "${email}"`);
+  run(
+    `git config user.name "${process.env.GIT_USER_NAME || "github-actions[bot]"}"`,
+  );
+  run(
+    `git config user.email "${process.env.GIT_USER_EMAIL || "41898282+github-actions[bot]@users.noreply.github.com"}"`,
+  );
 }
+
+// ---- Tag ----
 
 console.log(`\nCreating tag ${tag} ...`);
 run(`git tag -a ${tag} -m "${tag}"`);
@@ -162,7 +135,7 @@ console.log("Pushing tags ...");
 run(`git push origin ${tag}`);
 run(`git push origin ${majorTag} --force`);
 
-// --- GitHub Release ---
+// ---- GitHub Release ----
 
 try {
   run("gh --version");
@@ -177,14 +150,12 @@ try {
     process.exit(1);
   }
   console.log("\ngh CLI not found. To create a GitHub Release:");
-  console.log("  Option 1: Install gh CLI");
-  console.log("    https://cli.github.com/");
+  console.log("  1. Install gh CLI: https://cli.github.com/");
   console.log(
-    `  Option 2: Run: gh release create ${tag} --title "${tag}" --generate-notes --latest`,
+    `  2. Or: gh release create ${tag} --title "${tag}" --generate-notes --latest`,
   );
-  console.log(`  Option 3: Trigger the release-root workflow`);
   console.log(
-    `    https://github.com/zotero-plugin-dev/workflows/actions/workflows/release-root.yml`,
+    "  3. Or trigger: https://github.com/zotero-plugin-dev/workflows/actions/workflows/release-root.yml",
   );
 }
 
