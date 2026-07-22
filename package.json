@@ -5,7 +5,8 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "lint": "prettier . --write"
+    "lint": "prettier . --write",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "prettier": "^3.9.4"

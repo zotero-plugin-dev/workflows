@@ -47,7 +47,47 @@ jobs:
 
 See the [examples directory](./examples/) for more examples.
 
+### Versioning
+
+This repository uses **semantic versioning tags** for stable references:
+
+```yaml
+# Recommended: track the latest v1.x releases (auto-receives bugfixes)
+uses: zotero-plugin-dev/workflows/.github/workflows/issue-bot.yml@v1
+
+# Pin to a specific stable version (Renovate will suggest upgrades)
+uses: zotero-plugin-dev/workflows/.github/workflows/issue-bot.yml@v1.0.0
+
+# Track the latest development changes
+uses: zotero-plugin-dev/workflows/.github/workflows/issue-bot.yml@main
+```
+
+| Reference | Updates               | Use case                                |
+| --------- | --------------------- | --------------------------------------- |
+| `@v1`     | Automatic (tag moved) | Follow latest stable with auto bugfixes |
+| `@v1.0.0` | Via Renovate          | Pin to a specific release               |
+| `@main`   | Every push            | Bleeding edge (may break)               |
+
 You can also choose to fix the version as a commit hash to prevent supply chain attacks and improve compatibility.
+
+## Contributing
+
+### Releasing
+
+#### Method 1: Local
+
+```bash
+# Run the release script on `main` branch
+pnpm run release 1.0.0
+```
+
+> Requires [gh CLI](https://cli.github.com/).
+
+#### Method 2: Remote
+
+1. Go to [Actions → Release Root](https://github.com/zotero-plugin-dev/workflows/actions/workflows/release-root.yml)
+2. Click **Run workflow**
+3. Enter version (e.g. `1.0.0`) and submit
 
 ## Lincense
 
