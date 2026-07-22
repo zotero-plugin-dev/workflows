@@ -77,7 +77,16 @@ You can also choose to fix the version as a commit hash to prevent supply chain 
 #### Method 1: Local
 
 ```bash
-# Run the release script on `main` branch
+# Auto bump patch (1.0.0 → 1.0.1)
+pnpm run release
+
+# Bump minor (1.0.1 → 1.1.0)
+pnpm run release minor
+
+# Bump major (1.1.0 → 2.0.0)
+pnpm run release major
+
+# Exact version
 pnpm run release 1.0.0
 ```
 

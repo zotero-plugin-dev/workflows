@@ -5,33 +5,84 @@
  * and creates a GitHub Release.
  *
  * Usage:
- *   node scripts/release.mjs 1.0.0
- *   node scripts/release.mjs 1.0.0 --ci
- *   pnpm run release 1.0.0
+ *   pnpm run release              → auto bump patch
+ *   pnpm run release patch        → bump patch
+ *   pnpm run release minor        → bump minor
+ *   pnpm run release major        → bump major
+ *   pnpm run release 1.2.3        → explicit version
+ *   node scripts/release.mjs patch --ci
  */
 import { execSync } from "node:child_process";
 import { createInterface } from "node:readline";
 
-const version = process.argv[2];
+const arg = process.argv[2];
 const isCI = process.argv.includes("--ci");
-
-if (!version) {
-  console.error("Usage: pnpm run release <version> [--ci]");
-  console.error("Example: pnpm run release 1.0.0");
-  process.exit(1);
-}
-
-const tag = version.startsWith("v") ? version : `v${version}`;
-if (!/^v\d+\.\d+\.\d+$/.test(tag)) {
-  console.error(`Invalid version: ${version}. Expected format: X.Y.Z`);
-  process.exit(1);
-}
-
-const majorTag = tag.match(/^v\d+/)[0];
 
 function run(cmd) {
   return execSync(cmd, { encoding: "utf-8" }).trim();
 }
+
+function runQuiet(cmd) {
+  try {
+    return run(cmd);
+  } catch {
+    return "";
+  }
+}
+
+// --- Resolve version ---
+
+const latestTag = runQuiet(
+  'git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null',
+);
+
+function parseVersion(v) {
+  const match = v.replace(/^v/, "").match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1]),
+    minor: parseInt(match[2]),
+    patch: parseInt(match[3]),
+  };
+}
+
+const bumpLevels = ["major", "minor", "patch"];
+const prev = latestTag
+  ? parseVersion(latestTag)
+  : { major: 0, minor: 0, patch: 0 };
+let next;
+
+if (bumpLevels.includes(arg)) {
+  next = { ...prev };
+  if (arg === "major") {
+    next.major++;
+    next.minor = 0;
+    next.patch = 0;
+  } else if (arg === "minor") {
+    next.minor++;
+    next.patch = 0;
+  } else {
+    next.patch++;
+  }
+} else if (!arg) {
+  next = { ...prev };
+  next.patch++;
+} else if (/^\d+\.\d+\.\d+$/.test(arg)) {
+  next = parseVersion(arg);
+} else if (/^v\d+\.\d+\.\d+$/.test(arg)) {
+  next = parseVersion(arg);
+} else {
+  console.error(`Usage: pnpm run release [patch|minor|major|<version>] [--ci]`);
+  process.exit(1);
+}
+
+if (!next) {
+  console.error(`Invalid version: ${arg}`);
+  process.exit(1);
+}
+
+const tag = `v${next.major}.${next.minor}.${next.patch}`;
+const majorTag = `v${next.major}`;
 
 // --- Checks ---
 
@@ -62,10 +113,11 @@ if (!isCI) {
 
 // --- Preview ---
 
-console.log(`\n  Version tag : ${tag}`);
-console.log(`  Major tag   : ${majorTag}`);
-console.log(`  HEAD        : ${run("git rev-parse --short HEAD")}`);
-console.log(`  Last commit : ${run("git log -1 --oneline")}`);
+console.log(`\n  Prev  : ${latestTag || "(none)"}`);
+console.log(`  Next  : ${tag}`);
+console.log(`  Major : ${majorTag}`);
+console.log(`  HEAD  : ${run("git rev-parse --short HEAD")}`);
+console.log(`  Last  : ${run("git log -1 --oneline")}`);
 
 // --- Confirm ---
 

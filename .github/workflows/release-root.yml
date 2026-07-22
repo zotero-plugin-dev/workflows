@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g. 1.0.0)"
+        description: "patch | minor | major | X.Y.Z"
         required: true
         type: string
 
