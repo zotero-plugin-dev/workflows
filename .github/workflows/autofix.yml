@@ -1,9 +1,6 @@
-name: autofix.ci
+name: Reusable Autofix.ci Workflow
 
 on:
-  push:
-    branches: [main]
-
   workflow_call:
     inputs:
       command:
@@ -30,7 +27,6 @@ jobs:
 
       - name: Fix
         run: ${{ inputs.command }}
-        if: ${{ inputs.command != '' }}
 
       - name: Commit
         uses: autofix-ci/action@v1
