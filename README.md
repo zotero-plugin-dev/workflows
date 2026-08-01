@@ -74,7 +74,12 @@ You can also choose to fix the version as a commit hash to prevent supply chain 
 
 ### Releasing
 
-#### Method 1: Local
+Releases are created as GitHub Releases with a semantic version tag (e.g. `v1.2.3`).
+Once a release is published, [Sync Major Tag](../.github/workflows/sync-major-tag.yml)
+moves the major version tag (e.g. `v1`) to point at the released commit, so
+consumers tracking `@v1` receive the update automatically.
+
+#### Option 1: Local script
 
 ```bash
 pnpm release           # bump patch (default)
@@ -83,13 +88,18 @@ pnpm release:minor     # bump minor
 pnpm release:major     # bump major
 ```
 
+This computes the next version, creates and pushes the tag, and creates the
+GitHub Release. The major tag is then moved by CI.
+
 > Requires [gh CLI](https://cli.github.com/).
 
-#### Method 2: Remote
+#### Option 2: GitHub UI
 
-1. Go to [Actions → Release Root](https://github.com/zotero-plugin-dev/workflows/actions/workflows/release-root.yml)
-2. Click **Run workflow**
-3. Enter version (e.g. `1.0.0`) and submit
+1. Go to [Releases → New release](https://github.com/zotero-plugin-dev/workflows/releases/new)
+2. Choose a new tag `vX.Y.Z` and set the target branch
+3. Click **Publish release**
+
+The major version tag is moved by CI once the release is published.
 
 ## Lincense
 
