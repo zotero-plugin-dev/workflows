@@ -6,23 +6,25 @@ A collection of reusable GitHub Actions workflows and composite actions for Zote
 
 ### Composite actions
 
-- [x] Setup JavaScript (check, setup nodejs, setup pnpm, install dependenies)
+- [x] Setup JavaScript (`setup-js`): checkout, then automatically pick the toolchain
+  - [x] `setup-vp`: [Vite+](https://github.com/voidzero-dev/setup-vp) setup (auto-detected when `vite-plus` is in the devDependencies of `package.json`)
+  - [x] `setup-node`: Node.js + package manager setup and dependency install
 
 ### Reusable GitHub Actions workflows
 
-- [ ] Autofix.ci
-- [ ] Release (production)
+- [x] Autofix.ci
+- [x] Release (production)
 - [ ] Continuous Releases: run on pr, run build and upload xpi to Artifacts, add comment to pr/issue, relate: https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/issues/148
 - [x] Issue bot
-  - [ ] Add/remove label to issue on user/owner comment
-  - [ ] Close issue with `invalid` label
-  - [ ] Close issue with `/d` comment
-  - [ ] Close stale issue
-  - [ ] Lock stable closed issue
+  - [x] Add/remove label to issue on user/owner comment
+  - [x] Close issue with `invalid` label
+  - [x] Close issue with `/d` comment
+  - [x] Close stale issue
+  - [x] Lock stable closed issue
 
 ## Usage
 
-```bash
+```yml
 name: Issue Bot
 
 on:

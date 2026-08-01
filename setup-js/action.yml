@@ -2,9 +2,10 @@ name: Setup JavaScript
 description: Setup JavaScript environment
 
 inputs:
+  # --- actions/checkout ---
   persist-credentials:
     description: Whether to configure the token or SSH key with the local git config
-    default: true
+    default: "true"
 
   ref:
     description: The `ref` option of actions/checkout
@@ -12,18 +13,36 @@ inputs:
 
   fetch-all:
     description: Whether to fetch all commits and submodules.
-    default: false
+    default: "false"
 
+  # --- shared by setup-node and setup-vp ---
+  auto-install:
+    description: "Whether to automatically install dependencies."
+    default: "true"
+
+  cache:
+    description: "Whether to cache dependencies."
+    required: false
+    default: "true"
+
+  # --- setup-node only (ignored when Vite+ is used) ---
   node-version:
-    description: "Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0."
+    description: "Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0. Ignored when Vite+ is used."
     default: "lts/*"
 
-  auto-install:
-    description: Whether to automatically install dependencies.
-    default: true
-
   package-manager:
-    description: "Package manager to use. Examples: npm, yarn, pnpm. Leave empty to auto-detect."
+    description: "Package manager to use. Examples: npm, yarn, pnpm. Leave empty to auto-detect. Ignored when Vite+ is used."
+    default: ""
+
+  # --- setup-vp only ---
+  vp:
+    description: "Use Vite+ (setup-vp) instead of the classic Node.js setup. 'true'/'false' to force; leave empty to auto-detect from the devDependencies of package.json (vite-plus)."
+    required: false
+    default: ""
+
+  vp-version:
+    description: "Version of Vite+ to install. Leave empty to auto-detect from the project."
+    required: false
     default: ""
 
 runs:
@@ -37,40 +56,40 @@ runs:
         fetch-depth: "${{ inputs.fetch-all == 'true' && '0' || '1' }}"
         submodules: "${{ inputs.fetch-all == 'true' && 'recursive' || false }}"
 
-    - name: Auto detect package manager
-      id: detect
+    - name: Detect Vite+ usage
+      id: vp
       shell: bash
       run: |
-        if [[ -n "${{ inputs.package-manager }}" ]]; then
-          echo "pm=${{ inputs.package-manager }}" >> $GITHUB_OUTPUT
-          exit 0
+        USE_VP="${{ inputs.vp }}"
+        if [[ -z "$USE_VP" ]]; then
+          USE_VP=false
+          if [[ -f package.json ]]; then
+            DEV_DEPS=$(sed -n '/"devDependencies"[[:space:]]*:[[:space:]]*{/,/}/p' package.json)
+            if [[ "$DEV_DEPS" == *'"vite-plus"'* ]]; then
+              USE_VP=true
+            fi
+          fi
         fi
-
-        if [[ -f "pnpm-lock.yaml" ]]; then
-          echo "pm=pnpm" >> $GITHUB_OUTPUT
-        elif [[ -f "yarn.lock" ]]; then
-          echo "pm=yarn" >> $GITHUB_OUTPUT
-        elif [[ -f "package-lock.json" ]]; then
-          echo "pm=npm" >> $GITHUB_OUTPUT
+        echo "use_vp=$USE_VP" >> $GITHUB_OUTPUT
+        if [[ "$USE_VP" == "true" ]]; then
+          echo "Using Vite+ (setup-vp)"
         else
-          echo "No lock file found. Defaulting to pnpm."
-          echo "pm=pnpm" >> $GITHUB_OUTPUT
+          echo "Using classic Node.js setup (setup-node)"
         fi
 
-    - name: Install pnpm
-      if: ${{ steps.detect.outputs.pm == 'pnpm' }}
-      uses: pnpm/action-setup@v6
+    - name: Setup Vite+ (setup-vp)
+      if: ${{ steps.vp.outputs.use_vp == 'true' }}
+      uses: $/setup-vp
+      with:
+        version: ${{ inputs.vp-version }}
+        run-install: ${{ inputs.auto-install }}
+        cache: ${{ inputs.cache }}
 
-    - name: Setup node
-      uses: actions/setup-node@v7
+    - name: Setup Node.js (setup-node)
+      if: ${{ steps.vp.outputs.use_vp != 'true' }}
+      uses: $/setup-node
       with:
         node-version: ${{ inputs.node-version }}
-        cache: ${{ steps.detect.outputs.pm }}
-        registry-url: "https://registry.npmjs.org"
-
-    - name: Install dependencies
-      if: ${{ inputs.auto-install == 'true' }}
-      shell: bash
-      run: |
-        echo "Using package manager: ${{ steps.detect.outputs.pm }}"
-        ${{ steps.detect.outputs.pm }} install
+        auto-install: ${{ inputs.auto-install }}
+        package-manager: ${{ inputs.package-manager }}
+        cache: ${{ inputs.cache }}

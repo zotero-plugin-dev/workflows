@@ -1,14 +1,22 @@
-name: Example of Setup JavsScript
+name: Example of Setup JavaScript
 
 on:
   push:
 
 jobs:
-  autofix:
+  setup:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup JS
+      - name: Setup JS (auto-detect Vite+)
         uses: zotero-plugin-dev/workflows/setup-js@main
+        # By default, setup-vp is used when `vite-plus` is found in the
+        # devDependencies of package.json. Set `vp: 'true'` or `vp: 'false'`
+        # to force a specific setup.
+        # with:
+        #   vp: "true"
+        #   vp-version: "0.2.0"
+        #   auto-install: "true"
+        #   cache: "true"
 
       - name: Run your command
         run: echo "pass"

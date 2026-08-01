@@ -1,0 +1,28 @@
+name: Setup Vite+ (vp)
+description: Setup Vite+ (vp) via voidzero-dev/setup-vp
+
+inputs:
+  version:
+    description: "Version of Vite+ to install. Leave empty to auto-detect from the project."
+    required: false
+    default: ""
+
+  run-install:
+    description: "Whether to run `vp install` after setup."
+    required: false
+    default: "true"
+
+  cache:
+    description: "Whether to cache project dependencies."
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup vp
+      uses: voidzero-dev/setup-vp@v1
+      with:
+        version: ${{ inputs.version }}
+        run-install: ${{ inputs.run-install }}
+        cache: ${{ inputs.cache }}
