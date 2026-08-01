@@ -164,7 +164,7 @@ jobs:
     if: ${{ inputs.enable-stale && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     steps:
       - name: Close stale issues
-        uses: actions/stale@v10
+        uses: actions/stale@v11
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           only-labels: ${{ inputs.stale-check-only-labels }}
