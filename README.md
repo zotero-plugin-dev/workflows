@@ -6,9 +6,10 @@ A collection of reusable GitHub Actions workflows and composite actions for Zote
 
 ### Composite actions
 
-- [x] Setup JavaScript (`setup-js`): checkout, then automatically pick the toolchain
-  - [x] `setup-vp`: [Vite+](https://github.com/voidzero-dev/setup-vp) setup (auto-detected when `vite-plus` is in the devDependencies of `package.json`)
-  - [x] `setup-node`: Node.js + package manager setup and dependency install
+- [x] Setup JavaScript (`setup-js`): checkout, then auto-pick a toolchain
+  - [x] Vite+ ([voidzero-dev/setup-vp](https://github.com/voidzero-dev/setup-vp)) when `vite-plus` is a devDependency
+  - [x] [pnpm/setup](https://github.com/pnpm/setup) when pnpm > 11 or version undeclared
+  - [x] `setup-node` (internal) otherwise (npm / yarn / pnpm ≤ 11)
 
 ### Reusable GitHub Actions workflows
 

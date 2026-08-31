@@ -9,9 +9,15 @@ jobs:
     steps:
       - name: Setup JS (auto-detect Vite+)
         uses: zotero-plugin-dev/workflows/setup-js@main
-        # By default, setup-vp is used when `vite-plus` is found in the
-        # devDependencies of package.json. Set `vp: 'true'` or `vp: 'false'`
-        # to force a specific setup.
+        # By default, the Vite+ setup (voidzero-dev/setup-vp) is used when
+        # `vite-plus` is found in the devDependencies of package.json. Set
+        # `vp: 'true'` or `vp: 'false'` to force a specific setup.
+        #
+        # When pnpm is used, pnpm > 11 (or an undeclared pnpm version) is
+        # set up via pnpm/setup@v2, which also installs the Node.js runtime
+        # (`node-version` is passed through, with `lts/*` translated to
+        # `lts`); pnpm <= 11 keeps the classic setup-node path
+        # (pnpm/action-setup).
         # with:
         #   vp: "true"
         #   vp-version: "0.2.0"
