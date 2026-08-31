@@ -10,9 +10,10 @@ inputs:
     description: Whether to automatically install dependencies.
     default: "true"
 
+  # Internal: the package manager is detected by setup-js and passed in here.
   package-manager:
-    description: "Package manager to use. Examples: npm, yarn, pnpm. Leave empty to auto-detect."
-    default: ""
+    description: "Package manager to use. Examples: npm, yarn, pnpm. Required."
+    required: true
 
   cache:
     description: "Whether to cache dependencies."
@@ -22,40 +23,20 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Auto detect package manager
-      id: detect
-      shell: bash
-      run: |
-        if [[ -n "${{ inputs.package-manager }}" ]]; then
-          echo "pm=${{ inputs.package-manager }}" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        if [[ -f "pnpm-lock.yaml" ]]; then
-          echo "pm=pnpm" >> $GITHUB_OUTPUT
-        elif [[ -f "yarn.lock" ]]; then
-          echo "pm=yarn" >> $GITHUB_OUTPUT
-        elif [[ -f "package-lock.json" ]]; then
-          echo "pm=npm" >> $GITHUB_OUTPUT
-        else
-          echo "No lock file found. Defaulting to pnpm."
-          echo "pm=pnpm" >> $GITHUB_OUTPUT
-        fi
-
     - name: Install pnpm
-      if: ${{ steps.detect.outputs.pm == 'pnpm' }}
+      if: ${{ inputs.package-manager == 'pnpm' }}
       uses: pnpm/action-setup@v6
 
     - name: Setup node
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
-        cache: ${{ inputs.cache == 'true' && steps.detect.outputs.pm || '' }}
+        cache: ${{ inputs.cache == 'true' && inputs.package-manager || '' }}
         registry-url: "https://registry.npmjs.org"
 
     - name: Install dependencies
       if: ${{ inputs.auto-install == 'true' }}
       shell: bash
       run: |
-        echo "Using package manager: ${{ steps.detect.outputs.pm }}"
-        ${{ steps.detect.outputs.pm }} install
+        echo "Using package manager: ${{ inputs.package-manager }}"
+        ${{ inputs.package-manager }} install
