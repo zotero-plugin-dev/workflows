@@ -15,7 +15,7 @@ inputs:
     description: Whether to fetch all commits and submodules.
     default: "false"
 
-  # --- shared by setup-node and setup-vp ---
+  # --- shared by setup-node and Vite+ ---
   auto-install:
     description: "Whether to automatically install dependencies."
     default: "true"
@@ -34,9 +34,9 @@ inputs:
     description: "Package manager to use. Examples: npm, yarn, pnpm. Leave empty to auto-detect from lock files. Ignored when Vite+ is used. When pnpm is detected (or forced), pnpm > 11 or an undeclared version uses pnpm/setup@v2; pnpm <= 11 uses setup-node (pnpm/action-setup)."
     default: ""
 
-  # --- setup-vp only ---
+  # --- Vite+ only ---
   vp:
-    description: "Use Vite+ (setup-vp) instead of the classic Node.js setup. 'true'/'false' to force; leave empty to auto-detect from the devDependencies of package.json (vite-plus)."
+    description: "Use Vite+ (voidzero-dev/setup-vp) instead of the classic Node.js setup. 'true'/'false' to force; leave empty to auto-detect from the devDependencies of package.json (vite-plus)."
     required: false
     default: ""
 
@@ -72,7 +72,7 @@ runs:
         fi
         echo "use_vp=$USE_VP" >> $GITHUB_OUTPUT
         if [[ "$USE_VP" == "true" ]]; then
-          echo "Using Vite+ (setup-vp)"
+          echo "Using Vite+ (voidzero-dev/setup-vp)"
         else
           echo "Using Node.js setup (setup-node or pnpm/setup)"
         fi
@@ -128,9 +128,9 @@ runs:
         fi
         echo "use_new_pnpm=$USE_NEW" >> $GITHUB_OUTPUT
 
-    - name: Setup Vite+ (setup-vp)
+    - name: Setup Vite+ (voidzero-dev/setup-vp)
       if: ${{ steps.vp.outputs.use_vp == 'true' }}
-      uses: $/setup-vp
+      uses: voidzero-dev/setup-vp@v1
       with:
         version: ${{ inputs.vp-version }}
         run-install: ${{ inputs.auto-install }}
