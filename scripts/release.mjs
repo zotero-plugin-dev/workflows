@@ -35,11 +35,17 @@ if (!["major", "minor", "patch"].includes(level)) {
 
 // ---- Resolve version ----
 
-const latestTag = runQuiet('git describe --tags --abbrev=0 --match "v[0-9]*"');
+// Match only full semver tags (vX.Y.Z). The major-only tag (v1) is moved by
+// CI on every release, so excluding it lets `git describe` resolve the latest
+// real version tag (e.g. v1.0.1).
+const latestTag = runQuiet(
+  'git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*"',
+);
 
 function parseVersion(v) {
-  const [, major, minor, patch] = v.match(/^v?(\d+)\.(\d+)\.(\d+)$/) || [];
-  return { major: +major, minor: +minor, patch: +patch };
+  const m = v.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (!m) return null;
+  return { major: +m[1], minor: +m[2], patch: +m[3] };
 }
 
 let next;
@@ -48,6 +54,11 @@ if (!latestTag) {
   next = { major: 1, minor: 0, patch: 0 };
 } else {
   const prev = parseVersion(latestTag);
+  if (!prev) {
+    // Shouldn't happen with the --match filter, but never fall through to NaN.
+    console.error(`Unrecognized tag "${latestTag}". Expected vX.Y.Z.`);
+    process.exit(1);
+  }
   next = { ...prev };
   if (level === "major") {
     next.major++;
