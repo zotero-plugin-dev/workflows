@@ -25,13 +25,13 @@ inputs:
     required: false
     default: "true"
 
-  # --- setup-node only (ignored when Vite+ is used) ---
+  # --- Node.js setup (ignored when Vite+ is used) ---
   node-version:
-    description: "Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0. Ignored when Vite+ is used."
+    description: "Version Spec of the Node.js version to use. Examples: 12.x, 10.15.1, >=10.15.0. Ignored when Vite+ is used. When pnpm is set up via pnpm/setup (pnpm > 11 or undeclared), this is passed as its `runtime` input, with `lts/*` translated to `lts`."
     default: "lts/*"
 
   package-manager:
-    description: "Package manager to use. Examples: npm, yarn, pnpm. Leave empty to auto-detect. Ignored when Vite+ is used."
+    description: "Package manager to use. Examples: npm, yarn, pnpm. Leave empty to auto-detect from lock files. Ignored when Vite+ is used. When pnpm is detected (or forced), pnpm > 11 or an undeclared version uses pnpm/setup@v2; pnpm <= 11 uses setup-node (pnpm/action-setup)."
     default: ""
 
   # --- setup-vp only ---
@@ -74,7 +74,63 @@ runs:
         if [[ "$USE_VP" == "true" ]]; then
           echo "Using Vite+ (setup-vp)"
         else
-          echo "Using classic Node.js setup (setup-node)"
+          echo "Using Node.js setup (setup-node or pnpm/setup)"
+        fi
+
+    - name: Detect package manager and pnpm strategy
+      id: detect
+      shell: bash
+      run: |
+        PM="${{ inputs.package-manager }}"
+        if [[ -z "$PM" ]]; then
+          if [[ -f "pnpm-lock.yaml" ]]; then
+            PM="pnpm"
+          elif [[ -f "yarn.lock" ]]; then
+            PM="yarn"
+          elif [[ -f "package-lock.json" ]]; then
+            PM="npm"
+          else
+            echo "No lock file found. Defaulting to pnpm."
+            PM="pnpm"
+          fi
+        fi
+        echo "pm=$PM" >> $GITHUB_OUTPUT
+
+        # pnpm >= 12 (or an undeclared version, which resolves to the latest
+        # pnpm, always >= 12) can use pnpm/setup@v2, which installs pnpm and a
+        # Node.js runtime in one step. pnpm <= 11 keeps the classic
+        # setup-node path (pnpm/action-setup): pnpm/setup only supports
+        # >= 11, and v11 ships no binary for Intel macOS runners.
+        USE_NEW=false
+        if [[ "$PM" == "pnpm" ]]; then
+          PM_VERSION=""
+          if [[ -f package.json ]]; then
+            # Top-level "packageManager": "pnpm@12.1.0[+sha256...]"
+            PM_VERSION=$(sed -n 's/.*"packageManager"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+            # Or devEngines.packageManager.version
+            if [[ -z "$PM_VERSION" ]]; then
+              PM_VERSION=$(sed -n 's/.*"packageManager"[[:space:]]*:[[:space:]]*{[^}]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+            fi
+          fi
+          if [[ -n "$PM_VERSION" ]]; then
+            # Extract the first number (major): handles "12.1.0", "pnpm@12.1.0",
+            # "12.1.0+sha256...", "^12.0.0", ">=12" and "12.x".
+            MAJOR=$(echo "$PM_VERSION" | sed 's/[^0-9]*\([0-9]*\).*/\1/')
+            if [[ "$MAJOR" =~ ^[0-9]+$ ]] && [[ "$MAJOR" -gt 11 ]]; then
+              USE_NEW=true
+            fi
+          else
+            USE_NEW=true
+          fi
+        fi
+        echo "use_new_pnpm=$USE_NEW" >> $GITHUB_OUTPUT
+
+        # Map node-version to pnpm/setup's runtime spec (node@<version>).
+        NV="${{ inputs.node-version }}"
+        if [[ -z "$NV" || "$NV" == "lts/*" ]]; then
+          echo "node_runtime=node@lts" >> $GITHUB_OUTPUT
+        else
+          echo "node_runtime=node@$NV" >> $GITHUB_OUTPUT
         fi
 
     - name: Setup Vite+ (setup-vp)
@@ -85,11 +141,19 @@ runs:
         run-install: ${{ inputs.auto-install }}
         cache: ${{ inputs.cache }}
 
+    - name: Setup pnpm + Node.js (pnpm/setup)
+      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.detect.outputs.use_new_pnpm == 'true' }}
+      uses: pnpm/setup@v2
+      with:
+        runtime: ${{ steps.detect.outputs.node_runtime }}
+        install: ${{ inputs.auto-install }}
+        cache: ${{ inputs.cache }}
+
     - name: Setup Node.js (setup-node)
-      if: ${{ steps.vp.outputs.use_vp != 'true' }}
+      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.detect.outputs.use_new_pnpm != 'true' }}
       uses: $/setup-node
       with:
         node-version: ${{ inputs.node-version }}
         auto-install: ${{ inputs.auto-install }}
-        package-manager: ${{ inputs.package-manager }}
+        package-manager: ${{ steps.detect.outputs.pm }}
         cache: ${{ inputs.cache }}
