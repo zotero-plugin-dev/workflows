@@ -77,7 +77,7 @@ runs:
           echo "Using Node.js setup (setup-node or pnpm/setup)"
         fi
 
-    - name: Detect package manager and pnpm strategy
+    - name: Detect package manager
       id: detect
       shell: bash
       run: |
@@ -96,13 +96,17 @@ runs:
         fi
         echo "pm=$PM" >> $GITHUB_OUTPUT
 
+    - name: Detect pnpm version and strategy
+      id: pnpm-strategy
+      shell: bash
+      run: |
         # pnpm >= 12 (or an undeclared version, which resolves to the latest
         # pnpm, always >= 12) can use pnpm/setup@v2, which installs pnpm and a
         # Node.js runtime in one step. pnpm <= 11 keeps the classic
         # setup-node path (pnpm/action-setup): pnpm/setup only supports
         # >= 11, and v11 ships no binary for Intel macOS runners.
         USE_NEW=false
-        if [[ "$PM" == "pnpm" ]]; then
+        if [[ "${{ steps.detect.outputs.pm }}" == "pnpm" ]]; then
           PM_VERSION=""
           if [[ -f package.json ]]; then
             # Top-level "packageManager": "pnpm@12.1.0[+sha256...]"
@@ -125,14 +129,6 @@ runs:
         fi
         echo "use_new_pnpm=$USE_NEW" >> $GITHUB_OUTPUT
 
-        # Map node-version to pnpm/setup's runtime spec (node@<version>).
-        NV="${{ inputs.node-version }}"
-        if [[ -z "$NV" || "$NV" == "lts/*" ]]; then
-          echo "node_runtime=node@lts" >> $GITHUB_OUTPUT
-        else
-          echo "node_runtime=node@$NV" >> $GITHUB_OUTPUT
-        fi
-
     - name: Setup Vite+ (setup-vp)
       if: ${{ steps.vp.outputs.use_vp == 'true' }}
       uses: $/setup-vp
@@ -142,15 +138,17 @@ runs:
         cache: ${{ inputs.cache }}
 
     - name: Setup pnpm + Node.js (pnpm/setup)
-      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.detect.outputs.use_new_pnpm == 'true' }}
+      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.pnpm-strategy.outputs.use_new_pnpm == 'true' }}
       uses: pnpm/setup@v2
       with:
-        runtime: ${{ steps.detect.outputs.node_runtime }}
+        # node-version is a setup-node spec (lts/*, 22.x, >=20.0.0); pnpm/setup
+        # expects its own runtime spec (node@<version>), so translate the default.
+        runtime: ${{ (inputs.node-version == '' || inputs.node-version == 'lts/*') && 'node@lts' || format('node@{0}', inputs.node-version) }}
         install: ${{ inputs.auto-install }}
         cache: ${{ inputs.cache }}
 
     - name: Setup Node.js (setup-node)
-      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.detect.outputs.use_new_pnpm != 'true' }}
+      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.pnpm-strategy.outputs.use_new_pnpm != 'true' }}
       uses: $/setup-node
       with:
         node-version: ${{ inputs.node-version }}
