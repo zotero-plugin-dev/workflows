@@ -48,6 +48,7 @@ inputs:
 runs:
   using: composite
   steps:
+    # --- Checkout ---
     - name: Checkout
       uses: actions/checkout@v7
       with:
@@ -56,6 +57,7 @@ runs:
         fetch-depth: "${{ inputs.fetch-all == 'true' && '0' || '1' }}"
         submodules: "${{ inputs.fetch-all == 'true' && 'recursive' || false }}"
 
+    # --- Detect toolchain and package manager ---
     - name: Detect Vite+ usage
       id: vp
       shell: bash
@@ -128,6 +130,7 @@ runs:
         fi
         echo "use_new_pnpm=$USE_NEW" >> $GITHUB_OUTPUT
 
+    # --- Setup ---
     - name: Setup Vite+ (voidzero-dev/setup-vp)
       if: ${{ steps.vp.outputs.use_vp == 'true' }}
       uses: voidzero-dev/setup-vp@v1
