@@ -98,6 +98,7 @@ runs:
 
     - name: Detect pnpm version and strategy
       id: pnpm-strategy
+      if: ${{ steps.detect.outputs.pm == 'pnpm' }}
       shell: bash
       run: |
         # pnpm >= 12 (or an undeclared version, which resolves to the latest
@@ -106,26 +107,24 @@ runs:
         # setup-node path (pnpm/action-setup): pnpm/setup only supports
         # >= 11, and v11 ships no binary for Intel macOS runners.
         USE_NEW=false
-        if [[ "${{ steps.detect.outputs.pm }}" == "pnpm" ]]; then
-          PM_VERSION=""
-          if [[ -f package.json ]]; then
-            # Top-level "packageManager": "pnpm@12.1.0[+sha256...]"
-            PM_VERSION=$(sed -n 's/.*"packageManager"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
-            # Or devEngines.packageManager.version
-            if [[ -z "$PM_VERSION" ]]; then
-              PM_VERSION=$(sed -n 's/.*"packageManager"[[:space:]]*:[[:space:]]*{[^}]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
-            fi
+        PM_VERSION=""
+        if [[ -f package.json ]]; then
+          # Top-level "packageManager": "pnpm@12.1.0[+sha256...]"
+          PM_VERSION=$(sed -n 's/.*"packageManager"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
+          # Or devEngines.packageManager.version
+          if [[ -z "$PM_VERSION" ]]; then
+            PM_VERSION=$(sed -n 's/.*"packageManager"[[:space:]]*:[[:space:]]*{[^}]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -1)
           fi
-          if [[ -n "$PM_VERSION" ]]; then
-            # Extract the first number (major): handles "12.1.0", "pnpm@12.1.0",
-            # "12.1.0+sha256...", "^12.0.0", ">=12" and "12.x".
-            MAJOR=$(echo "$PM_VERSION" | sed 's/[^0-9]*\([0-9]*\).*/\1/')
-            if [[ "$MAJOR" =~ ^[0-9]+$ ]] && [[ "$MAJOR" -gt 11 ]]; then
-              USE_NEW=true
-            fi
-          else
+        fi
+        if [[ -n "$PM_VERSION" ]]; then
+          # Extract the first number (major): handles "12.1.0", "pnpm@12.1.0",
+          # "12.1.0+sha256...", "^12.0.0", ">=12" and "12.x".
+          MAJOR=$(echo "$PM_VERSION" | sed 's/[^0-9]*\([0-9]*\).*/\1/')
+          if [[ "$MAJOR" =~ ^[0-9]+$ ]] && [[ "$MAJOR" -gt 11 ]]; then
             USE_NEW=true
           fi
+        else
+          USE_NEW=true
         fi
         echo "use_new_pnpm=$USE_NEW" >> $GITHUB_OUTPUT
 
