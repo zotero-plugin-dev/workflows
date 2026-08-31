@@ -59,7 +59,7 @@ runs:
 
     # --- Detect toolchain and package manager ---
     - name: Detect Vite+ usage
-      id: vp
+      id: detect-vp
       shell: bash
       run: |
         USE_VP="${{ inputs.vp }}"
@@ -80,7 +80,8 @@ runs:
         fi
 
     - name: Detect package manager
-      id: detect
+      id: detect-pm
+      if: ${{ steps.detect-vp.outputs.use_vp != 'true' }}
       shell: bash
       run: |
         PM="${{ inputs.package-manager }}"
@@ -99,8 +100,8 @@ runs:
         echo "pm=$PM" >> $GITHUB_OUTPUT
 
     - name: Detect pnpm version and strategy
-      id: pnpm-strategy
-      if: ${{ steps.detect.outputs.pm == 'pnpm' }}
+      id: detect-pnpm
+      if: ${{ steps.detect-vp.outputs.use_vp != 'true' && steps.detect-pm.outputs.pm == 'pnpm' }}
       shell: bash
       run: |
         # pnpm >= 12 (or an undeclared version, which resolves to the latest
@@ -132,7 +133,7 @@ runs:
 
     # --- Setup ---
     - name: Setup Vite+ (voidzero-dev/setup-vp)
-      if: ${{ steps.vp.outputs.use_vp == 'true' }}
+      if: ${{ steps.detect-vp.outputs.use_vp == 'true' }}
       uses: voidzero-dev/setup-vp@v1
       with:
         version: ${{ inputs.vp-version }}
@@ -140,7 +141,7 @@ runs:
         cache: ${{ inputs.cache }}
 
     - name: Setup pnpm + Node.js (pnpm/setup)
-      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.pnpm-strategy.outputs.use_new_pnpm == 'true' }}
+      if: ${{ steps.detect-vp.outputs.use_vp != 'true' && steps.detect-pnpm.outputs.use_new_pnpm == 'true' }}
       uses: pnpm/setup@v2
       with:
         # node-version is a setup-node spec (lts/*, 22.x, >=20.0.0); pnpm/setup
@@ -150,10 +151,10 @@ runs:
         cache: ${{ inputs.cache }}
 
     - name: Setup Node.js (setup-node)
-      if: ${{ steps.vp.outputs.use_vp != 'true' && steps.pnpm-strategy.outputs.use_new_pnpm != 'true' }}
+      if: ${{ steps.detect-vp.outputs.use_vp != 'true' && steps.detect-pnpm.outputs.use_new_pnpm != 'true' }}
       uses: $/setup-node
       with:
         node-version: ${{ inputs.node-version }}
         auto-install: ${{ inputs.auto-install }}
-        package-manager: ${{ steps.detect.outputs.pm }}
+        package-manager: ${{ steps.detect-pm.outputs.pm }}
         cache: ${{ inputs.cache }}
