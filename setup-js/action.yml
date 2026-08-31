@@ -73,11 +73,7 @@ runs:
           fi
         fi
         echo "use_vp=$USE_VP" >> $GITHUB_OUTPUT
-        if [[ "$USE_VP" == "true" ]]; then
-          echo "Using Vite+ (voidzero-dev/setup-vp)"
-        else
-          echo "Using Node.js setup (setup-node or pnpm/setup)"
-        fi
+        echo "Vite+ usage: $USE_VP"
 
     - name: Detect package manager
       id: detect-pm
@@ -98,6 +94,7 @@ runs:
           fi
         fi
         echo "pm=$PM" >> $GITHUB_OUTPUT
+        echo "Package manager: $PM"
 
     - name: Detect pnpm version and strategy
       id: detect-pnpm
@@ -123,13 +120,16 @@ runs:
           # Extract the first number (major): handles "12.1.0", "pnpm@12.1.0",
           # "12.1.0+sha256...", "^12.0.0", ">=12" and "12.x".
           MAJOR=$(echo "$PM_VERSION" | sed 's/[^0-9]*\([0-9]*\).*/\1/')
+          echo "Detected pnpm version: $PM_VERSION (major: $MAJOR)"
           if [[ "$MAJOR" =~ ^[0-9]+$ ]] && [[ "$MAJOR" -gt 11 ]]; then
             USE_NEW=true
           fi
         else
+          echo "No pnpm version declared in package.json"
           USE_NEW=true
         fi
         echo "use_new_pnpm=$USE_NEW" >> $GITHUB_OUTPUT
+        echo "pnpm strategy: use_new_pnpm=$USE_NEW"
 
     # --- Setup ---
     - name: Setup Vite+ (voidzero-dev/setup-vp)
