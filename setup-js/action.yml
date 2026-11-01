@@ -142,7 +142,7 @@ runs:
 
     - name: Setup pnpm + Node.js (pnpm/setup)
       if: ${{ steps.detect-vp.outputs.use_vp != 'true' && steps.detect-pnpm.outputs.use_new_pnpm == 'true' }}
-      uses: pnpm/setup@v2
+      uses: pnpm/setup@v3
       with:
         # node-version is a setup-node spec (lts/*, 22.x, >=20.0.0); pnpm/setup
         # expects its own runtime spec (node@<version>), so translate the default.
