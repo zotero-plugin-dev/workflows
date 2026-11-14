@@ -1,0 +1,48 @@
+# Monorepo: the root package.json is private and every workspace package is
+# published with the same version (e.g. `bumpp -r` creates one `vX.Y.Z` tag).
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  release:
+    uses: zotero-plugin-dev/workflows/.github/workflows/release-npm.yml@main
+    with:
+      build: pnpm build
+
+      # The default, `pnpm publish`, only publishes the root package, which is
+      # private here, so it fails with EPRIVATE. `pnpm -r publish` publishes
+      # every non-private package of the workspace and skips the versions that
+      # are already on the registry.
+      #
+      # Keep `-r` in this file rather than making it the default everywhere:
+      # without a pnpm-workspace.yaml, `pnpm -r` treats every nested
+      # package.json (test fixtures, docs, examples) as a package to publish,
+      # and a forgotten version bump turns into "no new packages that should be
+      # published" with exit code 0 instead of the error a plain publish gives.
+      publish: pnpm -r publish --no-git-checks --access public
+
+      # Continuous releases: the root package is private, so the default
+      # (publish `.` only) would find nothing. List the package paths instead.
+      cr: true
+      cr-publish: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/*'
+
+    # Optional. Without it, publishing authenticates with npm trusted
+    # publishing (OIDC). That needs a trusted publisher on npmjs.com for every
+    # package, and pnpm only exchanges the OIDC token itself as of pnpm 11
+    # (pnpm 10 delegates to the npm CLI, which needs npm 11.5.1+). Pass a token
+    # when that is not set up for all packages yet.
+    # secrets:
+    #   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    permissions:
+      contents: write
+      id-token: write

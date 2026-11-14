@@ -1,3 +1,26 @@
+# Single package: the root package.json is the published package.
+# Monorepo: see release-npm-monorepo.yml.
+#
+# Inputs of release-npm.yml (the defaults below are what this example gets):
+#
+#   build        Build command, skipped when empty.
+#                default: ""
+#   publish      Command run on a `v*` tag push. Must publish the root package
+#                or, in a workspace, every package (`pnpm -r publish ...`).
+#                default: pnpm publish --no-git-checks --access public
+#   cr           Enable continuous releases, powered by pkg-pr-new.
+#                default: false
+#   cr-publish   Command run for continuous releases.
+#                default: pnpx pkg-pr-new publish --compact --no-template --pnpm
+#
+#   secrets.NPM_TOKEN  Optional npm token, exported as NODE_AUTH_TOKEN only
+#                      when set. Leave it unset to publish with npm trusted
+#                      publishing (OIDC), which needs `id-token: write` and a
+#                      trusted publisher on npmjs.com for every package.
+#
+# On a `v*` tag push the workflow publishes and then creates the GitHub Release
+# notes with changelogithub. Every published package is listed in the job
+# summary.
 name: Release
 
 on:
