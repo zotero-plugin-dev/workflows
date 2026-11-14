@@ -7,11 +7,26 @@ on:
         required: false
         type: string
         default: ""
+      publish:
+        description: "The command that publishes to the npm registry. A monorepo whose root package is private must pass a recursive command, e.g. `pnpm -r publish --no-git-checks --access public`."
+        required: false
+        type: string
+        default: "pnpm publish --no-git-checks --access public"
       cr:
         description: Enable Continuous Releases, powered by pkg-pr-new
         required: false
         type: boolean
         default: false
+      cr-publish:
+        description: "The command that publishes continuous releases. In a monorepo, append the package globs, e.g. `pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/*'`."
+        required: false
+        type: string
+        default: "pnpx pkg-pr-new publish --compact --no-template --pnpm"
+
+    secrets:
+      NPM_TOKEN:
+        description: "An npm token that may publish the packages. Leave it unset to authenticate with npm trusted publishing (OIDC): that needs `id-token: write` and a trusted publisher configured for every package on npmjs.com."
+        required: false
 
 jobs:
   release:
@@ -36,18 +51,116 @@ jobs:
       #  Production release (Tag-triggered)
       #  Runs only when pushing a version tag
       # ========================================
-      - name: Publish to NPM and sync Changelog
-        if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/')
+      - name: Check publish command
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        shell: bash
         run: |
-          pnpm publish --no-git-checks --access public
-          pnpx changelogithub
+          PUBLISH="${{ inputs.publish }}"
+          IS_PRIVATE=$(node -p "require('./package.json').private === true" 2>/dev/null || echo false)
+          if [[ "$IS_PRIVATE" != "true" ]]; then
+            exit 0
+          fi
+          # The root package is private: `pnpm publish` publishes the root only
+          # and fails with EPRIVATE, so point at the recursive command instead.
+          if [[ " $PUBLISH " == *" -r "* || " $PUBLISH " == *" --recursive "* ]]; then
+            exit 0
+          fi
+          echo "::error title=Nothing to publish::The root package.json is private, so '$PUBLISH' cannot publish anything."
+          echo "In a workspace/monorepo, pass the command that publishes every package:"
+          echo
+          echo "  with:"
+          echo "    publish: pnpm -r publish --no-git-checks --access public   # pnpm"
+          echo "    publish: npm publish --workspaces                          # npm"
+          exit 1
+
+      - name: Publish to NPM
+        id: publish
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        shell: bash
+        run: |
+          # `NODE_AUTH_TOKEN=""` short-circuits the OIDC trusted publishing path,
+          # so only export it when the caller actually passed a token.
+          if [ -n "$NPM_TOKEN" ]; then
+            export NODE_AUTH_TOKEN="$NPM_TOKEN"
+          fi
+          ${{ inputs.publish }} 2>&1 | tee "$RUNNER_TEMP/pnpm-publish.log"
         env:
           NPM_CONFIG_PROVENANCE: true
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Sync Changelog
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        run: pnpx changelogithub
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write publish summary
+        if: always() && github.event_name == 'push' && github.ref_type == 'tag'
+        shell: bash
+        env:
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+          PUBLISH_LOG: ${{ runner.temp }}/pnpm-publish.log
+        run: |
+          cat > "$RUNNER_TEMP/publish-summary.mjs" <<'SCRIPT'
+          import fs from 'node:fs'
+          import process from 'node:process'
+
+          const outcome = process.env.PUBLISH_OUTCOME || 'unknown'
+          const logFile = process.env.PUBLISH_LOG
+
+          /** @type {{ name: string, version: string }[]} */
+          const packages = []
+          const seen = new Set()
+
+          function add(name, version) {
+            const key = `${name}@${version}`
+            if (seen.has(key)) return
+            seen.add(key)
+            packages.push({ name, version })
+          }
+
+          // Preferred source: `pnpm publish --report-summary`.
+          try {
+            if (fs.existsSync('pnpm-publish-summary.json')) {
+              const summary = JSON.parse(fs.readFileSync('pnpm-publish-summary.json', 'utf8'))
+              for (const pkg of summary.publishedPackages ?? []) add(pkg.name, pkg.version)
+            }
+          } catch {}
+
+          // Fallback: pnpm prints `📦 <name>@<version> → <registry>` per package.
+          if (packages.length === 0 && logFile && fs.existsSync(logFile)) {
+            const log = fs.readFileSync(logFile, 'utf8').replace(/\x1B\[[0-9;]*m/g, '')
+            for (const [, name, version] of log.matchAll(/📦\s+(\S+)@(\S+)\s+→/gu)) add(name, version)
+          }
+
+          const out = ['## 📦 npm publish', '']
+
+          if (outcome !== 'success') {
+            out.push(`The publish step finished with **${outcome}**, so nothing is listed here. Check the logs above.`)
+            process.stdout.write(`${out.join('\n')}\n`)
+            process.exit(0)
+          }
+
+          if (packages.length === 0) {
+            out.push('No package was reported as published.')
+            out.push('')
+            out.push('If you overrode `publish`, keep its output on stdout (the step tees it to a log), or pass `--report-summary` to pnpm.')
+            process.stdout.write(`${out.join('\n')}\n`)
+            process.exit(0)
+          }
+
+          out.push('| Package | Version |')
+          out.push('| --- | --- |')
+          for (const pkg of packages) out.push(`| \`${pkg.name}\` | \`${pkg.version}\` |`)
+          out.push('')
+          out.push(`<sub>${packages.length} package(s). Packages whose version is already on the registry are not listed.</sub>`)
+          process.stdout.write(`${out.join('\n')}\n`)
+          SCRIPT
+          node "$RUNNER_TEMP/publish-summary.mjs" >> "$GITHUB_STEP_SUMMARY"
 
       # ========================================
       #  Preview release (Push / PR-triggered)
       # ========================================
       - name: Publish Preview Package (pkg-pr-new)
         if: ${{ inputs.cr == true && github.ref_type != 'tag' }}
-        run: pnpx pkg-pr-new publish --compact --no-template --pnpm
+        run: ${{ inputs.cr-publish }}
